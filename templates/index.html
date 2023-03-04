@@ -9,6 +9,13 @@
 	</head>
 <body>
 	<h1>{{ h }}</h1>
+	<form action="/dairyupdate" method="post">
+		<textarea class="textarea" name="textarea">
+			{{ todos["text"] }}
+		</textarea>
+		<button type="submit"> update</button>
+	</form>
+	
 	<ul>
 		<li><a href="/list" class="{{ a1 }}">ALL</a></li>
 		<li><a href="/" class="{{ a2 }}">Uncompleted</a></li>

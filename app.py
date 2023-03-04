@@ -1,20 +1,37 @@
+import ipaddress
 from flask import Flask, render_template,request,redirect,url_for # For flask implementation
 from bson import ObjectId # For ObjectId to work
 from pymongo import MongoClient
 import os
+import datetime
 
+
+
+day = datetime.datetime.now()
 app = Flask(__name__)
-title = "TODO sample application with Flask and MongoDB"
-heading = "TODO Reminder with Flask and MongoDB"
+heading = day.strftime("%d")+"-"+day.strftime("%B")+"-"+day.strftime("%Y") +" My Diary"
+title = "My Diary"
+user_id = "kamal"
+page_id = ""
 
-client = MongoClient("mongodb://127.0.0.1:27017") #host uri
-db = client.mymongodb    #Select the database
-todos = db.todo #Select the collection name
+client = MongoClient("mongodb+srv://user:user_pin@dbcluster.frhqp.mongodb.net/?retryWrites=true&w=majority") #host uri
+db = client.dairy    #Select the database
+todos = db.data #Select the collection name
 
 def redirect_url():
     return request.args.get('next') or \
            request.referrer or \
            url_for('index')
+
+@app.route("/dairyupdate", methods=['POST'])
+def dairyupdate():
+	txt = request.values.get("textarea")
+	page = todos.find_one({"iden":day.strftime("%d")+"-"+day.strftime("%B")+"-"+day.strftime("%Y")+user_id})
+	id =page['_id']
+	todos.update_one({"_id":ObjectId(id)}, {'$set':{"text":txt}})
+	redir=redirect_url()	
+
+	return redirect(redir)
 
 @app.route("/list")
 def lists ():
@@ -27,8 +44,12 @@ def lists ():
 @app.route("/uncompleted")
 def tasks ():
 	#Display the Uncompleted Tasks
-	todos_l = todos.find({"done":"no"})
+	todos_l = todos.find_one({"iden":day.strftime("%d")+"-"+day.strftime("%B")+"-"+day.strftime("%Y")+user_id})
+	print(todos_l)
 	a2="active"
+	page_id=todos_l
+	if todos_l==None:
+		todos_l = todos.insert_one({"iden":day.strftime("%d")+"-"+day.strftime("%B")+"-"+day.strftime("%Y")+user_id})
 	return render_template('index.html',a2=a2,todos=todos_l,t=title,h=heading)
 
 
@@ -45,9 +66,9 @@ def done ():
 	id=request.values.get("_id")
 	task=todos.find({"_id":ObjectId(id)})
 	if(task[0]["done"]=="yes"):
-		todos.update({"_id":ObjectId(id)}, {"$set": {"done":"no"}})
+		todos.update_one({"_id":ObjectId(id)}, {"$set": {"done":"no"}})
 	else:
-		todos.update({"_id":ObjectId(id)}, {"$set": {"done":"yes"}})
+		todos.update_one({"_id":ObjectId(id)}, {"$set": {"done":"yes"}})
 	redir=redirect_url()	
 
 	return redirect(redir)
@@ -59,7 +80,8 @@ def action ():
 	desc=request.values.get("desc")
 	date=request.values.get("date")
 	pr=request.values.get("pr")
-	todos.insert({ "name":name, "desc":desc, "date":date, "pr":pr, "done":"no"})
+	# todos.insert
+	todos.insert_one({ "name":name, "desc":desc, "date":date, "pr":pr, "done":"no"})
 	return redirect("/list")
 
 @app.route("/remove")
@@ -83,7 +105,7 @@ def action3 ():
 	date=request.values.get("date")
 	pr=request.values.get("pr")
 	id=request.values.get("_id")
-	todos.update({"_id":ObjectId(id)}, {'$set':{ "name":name, "desc":desc, "date":date, "pr":pr }})
+	todos.update_one({"_id":ObjectId(id)}, {'$set':{ "name":name, "desc":desc, "date":date, "pr":pr }})
 	return redirect("/")
 
 @app.route("/search", methods=['GET'])
